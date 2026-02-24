@@ -289,14 +289,15 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 raylib.root_module.addSystemIncludePath(.{ .cwd_relative = androidAsmPath });
                 raylib.root_module.addSystemIncludePath(.{ .cwd_relative = androidGluePath });
 
-                var libcData: std.ArrayList(u8) = .empty;
-                var aw: std.Io.Writer.Allocating = .fromArrayList(b.allocator, &libcData);
-                try (std.zig.LibCInstallation{
+                var aw: std.Io.Writer.Allocating = .init(b.allocator);
+                defer aw.deinit();
+                const libc_installation: std.zig.LibCInstallation = .{
                     .include_dir = androidIncludePath,
                     .sys_include_dir = androidIncludePath,
                     .crt_dir = androidApiSpecificPath,
-                }).render(&aw.writer);
-                const libcFile = b.addWriteFiles().add("android-libc.txt", try libcData.toOwnedSlice(b.allocator));
+                };
+                try libc_installation.render(&aw.writer);
+                const libcFile = b.addWriteFiles().add("android-libc.txt", aw.written());
                 raylib.setLibCFile(libcFile);
 
                 if (options.opengl_version == .auto) {
