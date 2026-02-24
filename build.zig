@@ -310,17 +310,22 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             } else {
                 try c_source_files.append(b.allocator, "src/rglfw.c");
 
+                const libx11_dep = b.dependency("X11_zig", .{
+                    .target = target,
+                    .optimize = optimize,
+                });
+                const libx11 = libx11_dep.artifact("X11");
+                for (libx11.root_module.include_dirs.items) |*include_dir| {
+                    switch (include_dir.*) {
+                        .path => raylib.root_module.addIncludePath(include_dir.path),
+                        .config_header_step => raylib.root_module.addConfigHeader(include_dir.config_header_step),
+                        else => unreachable,
+                    }
+                }
+
                 if (options.linux_display_backend == .X11 or options.linux_display_backend == .Both) {
                     raylib.root_module.addCMacro("_GLFW_X11", "");
-                    raylib.root_module.linkSystemLibrary("GLX", .{});
-                    raylib.root_module.linkSystemLibrary("X11", .{});
-                    raylib.root_module.linkSystemLibrary("Xcursor", .{});
-                    raylib.root_module.linkSystemLibrary("Xext", .{});
-                    raylib.root_module.linkSystemLibrary("Xfixes", .{});
-                    raylib.root_module.linkSystemLibrary("Xi", .{});
-                    raylib.root_module.linkSystemLibrary("Xinerama", .{});
-                    raylib.root_module.linkSystemLibrary("Xrandr", .{});
-                    raylib.root_module.linkSystemLibrary("Xrender", .{});
+                    raylib.root_module.linkLibrary(libx11);
                 }
 
                 if (options.linux_display_backend == .Wayland or options.linux_display_backend == .Both) {
@@ -332,9 +337,22 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                         @panic("`wayland-scanner` not found");
                     };
                     raylib.root_module.addCMacro("_GLFW_WAYLAND", "");
-                    raylib.root_module.linkSystemLibrary("EGL", .{});
-                    raylib.root_module.linkSystemLibrary("wayland-client", .{});
-                    raylib.root_module.linkSystemLibrary("xkbcommon", .{});
+
+                    const libwayland_dep = b.dependency("wayland_zig", .{
+                        .target = target,
+                        .optimize = optimize,
+                    });
+                    const libwayland = libwayland_dep.artifact("wayland");
+                    for (libwayland.root_module.include_dirs.items) |*include_dir| {
+                        switch (include_dir.*) {
+                            .path => raylib.root_module.addIncludePath(include_dir.path),
+                            .config_header_step => raylib.root_module.addConfigHeader(include_dir.config_header_step),
+                            else => unreachable,
+                        }
+                    }
+                    raylib.root_module.linkLibrary(libwayland);
+                    raylib.root_module.linkLibrary(libx11);
+
                     waylandGenerate(b, raylib, "wayland.xml", "wayland-client-protocol");
                     waylandGenerate(b, raylib, "xdg-shell.xml", "xdg-shell-client-protocol");
                     waylandGenerate(b, raylib, "xdg-decoration-unstable-v1.xml", "xdg-decoration-unstable-v1-client-protocol");

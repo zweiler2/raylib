@@ -19,6 +19,14 @@
             .url = "git+https://github.com/zig-gamedev/zemscripten#3fa4b778852226c7346bdcc3c1486e875a9a6d02",
             .hash = "zemscripten-0.2.0-dev-sRlDqApRAACspTbAZnuNKWIzfWzSYgYkb2nWAXZ-tqqt",
         },
+        .X11_zig = .{
+            .url = "git+https://github.com/tiawl/X11.zig?ref=toolbox-2.0.0#73eb80968506dd7fc7fdc6ef53515171b7a294fc",
+            .hash = "X11_zig-1.0.0-UuAzbKsKwADkteukor47VtrF2jAzgcPVoGpBm_uhp9Ec",
+        },
+        .wayland_zig = .{
+            .url = "git+https://github.com/tiawl/wayland.zig?ref=toolbox-2.0.0#5ce41c9d999ba65da9ed744fb2a7b1af7972e22e",
+            .hash = "wayland_zig-1.0.0-JmY-j104CgAc55X6FW_CTUGOiChX6GSViUAREGQ06gtt",
+        },
     },
 
     .paths = .{
