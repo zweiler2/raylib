@@ -155,6 +155,7 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         );
     }
 
+    // TODO: Fix external config handling
     if (options.config.len > 0) {
         // Sets a flag indicating the use of a custom `config.h`
         try raylib_flags_arr.append(b.allocator, "-DEXTERNAL_CONFIG_FLAGS");
@@ -186,9 +187,6 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             // Otherwise, append default value from config.h to compile flags
             try raylib_flags_arr.append(b.allocator, flag);
         }
-    } else {
-        // Set default config if no custom config got set
-        try raylib_flags_arr.appendSlice(b.allocator, &config_h_flags);
     }
 
     // No GLFW required on PLATFORM_DRM
@@ -201,23 +199,23 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
 
     if (options.rshapes) {
         try c_source_files.append(b.allocator, "src/rshapes.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RSHAPES");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RSHAPES=1");
     }
     if (options.rtextures) {
         try c_source_files.append(b.allocator, "src/rtextures.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RTEXTURES");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RSHAPES=1");
     }
     if (options.rtext) {
         try c_source_files.append(b.allocator, "src/rtext.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RTEXT");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RTEXT=1");
     }
     if (options.rmodels) {
         try c_source_files.append(b.allocator, "src/rmodels.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RMODELS");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RMODELS=1");
     }
     if (options.raudio) {
         try c_source_files.append(b.allocator, "src/raudio.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RAUDIO");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RAUDIO=1");
     }
 
     if (options.opengl_version != .auto) {
@@ -450,7 +448,7 @@ pub const Options = struct {
     opengl_version: OpenglVersion = .auto,
     android_ndk: []const u8 = "",
     android_api_version: []const u8 = "35",
-    /// config should be a list of space-separated cflags, eg, "-DSUPPORT_CUSTOM_FRAME_CONTROL"
+    /// config should be a list of space-separated cflags, eg, "-DSUPPORT_CUSTOM_FRAME_CONTROL=1"
     config: []const u8 = &.{},
 
     const defaults = Options{};
