@@ -203,7 +203,7 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     }
     if (options.rtextures) {
         try c_source_files.append(b.allocator, "src/rtextures.c");
-        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RSHAPES=1");
+        try raylib_flags_arr.append(b.allocator, "-DSUPPORT_MODULE_RTEXTURES=1");
     }
     if (options.rtext) {
         try c_source_files.append(b.allocator, "src/rtext.c");
