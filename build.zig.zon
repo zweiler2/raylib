@@ -27,6 +27,10 @@
             .url = "git+https://github.com/tiawl/wayland.zig?ref=toolbox-2.0.0#5ce41c9d999ba65da9ed744fb2a7b1af7972e22e",
             .hash = "wayland_zig-1.0.0-JmY-j104CgAc55X6FW_CTUGOiChX6GSViUAREGQ06gtt",
         },
+        .sdl = .{
+            .url = "git+https://github.com/castholm/SDL#887fa805e40d5c7bb3955ae69b89ed566c6a0471",
+            .hash = "sdl-0.4.0+3.4.0-SDL--rq2owEZsySGuHCuVJ9naEvH3i3e_pyUIjziBtJ-",
+        },
     },
 
     .paths = .{

@@ -240,6 +240,16 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     }
 
     raylib.root_module.addIncludePath(b.path("src/platforms"));
+    if (options.platform == .sdl) {
+        const sdl_dep = b.dependency("sdl", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        raylib.root_module.addCMacro("USING_SDL3_PROJECT", "");
+        raylib.root_module.addSystemIncludePath(sdl_dep.path("include"));
+        raylib.root_module.linkLibrary(sdl_dep.artifact("SDL3"));
+        setDesktopPlatform(raylib, options.platform);
+    }
     switch (target.result.os.tag) {
         .windows => {
             switch (options.platform) {
