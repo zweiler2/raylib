@@ -1,6 +1,12 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const RAYLIB_VERSION: std.SemanticVersion = .{
+    .major = 6,
+    .minor = 0,
+    .patch = 0,
+};
+
 /// Minimum supported version of Zig
 const min_ver = "0.15.2";
 
@@ -133,6 +139,7 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             .target = target,
             .link_libc = true,
         }),
+        .version = RAYLIB_VERSION,
     });
 
     try raylib_flags_arr.appendSlice(
