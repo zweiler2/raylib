@@ -630,12 +630,6 @@ fn addExamples(
                     exe_mod.addCMacro("PLATFORM_DESKTOP", "");
                 },
                 .linux => {
-                    exe_mod.linkSystemLibrary("GL", .{});
-                    exe_mod.linkSystemLibrary("rt", .{});
-                    exe_mod.linkSystemLibrary("dl", .{});
-                    exe_mod.linkSystemLibrary("m", .{});
-                    exe_mod.linkSystemLibrary("X11", .{});
-
                     exe_mod.addCMacro("PLATFORM_DESKTOP", "");
                 },
                 .macos => {
