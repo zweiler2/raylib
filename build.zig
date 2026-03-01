@@ -91,8 +91,8 @@ fn setDesktopPlatform(raylib: *std.Build.Step.Compile, platform: PlatformBackend
         .glfw => raylib.root_module.addCMacro("PLATFORM_DESKTOP_GLFW", ""),
         .rgfw => raylib.root_module.addCMacro("PLATFORM_DESKTOP_RGFW", ""),
         .sdl => raylib.root_module.addCMacro("PLATFORM_DESKTOP_SDL", ""),
+        .drm => raylib.root_module.addCMacro("PLATFORM_DRM", ""),
         .android => raylib.root_module.addCMacro("PLATFORM_ANDROID", ""),
-        else => {},
     }
 }
 
@@ -160,6 +160,16 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 "-DBUILD_LIBTYPE_SHARED",
             },
         );
+        if (target.result.os.tag == .linux or
+            target.result.os.tag.isBSD() or
+            target.result.os.tag.isDarwin())
+        {
+            try raylib_flags_arr.append(b.allocator, "-fvisibility=hidden");
+        }
+    }
+
+    if (optimize == .Debug) {
+        raylib.root_module.addCMacro("_DEBUG", "");
     }
 
     // TODO: Fix external config handling
@@ -237,6 +247,8 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 .rgfw, .sdl, .drm, .android => {},
             }
 
+            raylib.root_module.addCMacro("UNICODE", "");
+
             raylib.root_module.linkSystemLibrary("winmm", .{});
             raylib.root_module.linkSystemLibrary("gdi32", .{});
             raylib.root_module.linkSystemLibrary("opengl32", .{});
@@ -244,6 +256,7 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             setDesktopPlatform(raylib, options.platform);
         },
         .linux => {
+            try raylib_flags_arr.append(b.allocator, "-fPIC");
             if (options.platform == .drm) {
                 if (options.opengl_version == .auto) {
                     raylib.root_module.linkSystemLibrary("GLESv2", .{});
@@ -254,10 +267,10 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 raylib.root_module.linkSystemLibrary("gbm", .{});
                 raylib.root_module.linkSystemLibrary("libdrm", .{ .use_pkg_config = .force });
 
-                raylib.root_module.addCMacro("PLATFORM_DRM", "");
+                setDesktopPlatform(raylib, options.platform);
                 raylib.root_module.addCMacro("EGL_NO_X11", "");
                 raylib.root_module.addCMacro("DEFAULT_BATCH_BUFFER_ELEMENT", "");
-            } else if (target.result.abi.isAndroid()) {
+            } else if (options.platform == .android or target.result.abi.isAndroid()) {
 
                 //these are the only tag options per https://developer.android.com/ndk/guides/other_build_systems
                 const hostTuple = switch (builtin.target.os.tag) {
@@ -310,10 +323,30 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                     raylib.root_module.addCMacro("GRAPHICS_API_OPENGL_ES2", "");
                 }
                 raylib.root_module.linkSystemLibrary("EGL", .{});
+                raylib.root_module.linkSystemLibrary("log", .{});
+                raylib.root_module.linkSystemLibrary("android", .{});
 
                 setDesktopPlatform(raylib, .android);
+
+                try raylib_flags_arr.appendSlice(
+                    b.allocator,
+                    &[_][]const u8{
+                        "-ffunction-sections",
+                        "-funwind-tables",
+                        "-fstack-protector-strong",
+                        "-fPIE",
+                        "-fPIC",
+                        "-Wa,--noexecstack",
+                        "-Wformat",
+                        "-no-canonical-prefixes",
+                        "-D__ANDROID__",
+                        b.fmt("-D__ANDROID_API__={s}", .{options.android_api_version}),
+                    },
+                );
             } else {
-                try c_source_files.append(b.allocator, "src/rglfw.c");
+                if (options.platform == .glfw) {
+                    try c_source_files.append(b.allocator, "src/rglfw.c");
+                }
 
                 const libx11_dep = b.dependency("X11_zig", .{
                     .target = target,
@@ -329,7 +362,13 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 }
 
                 if (options.linux_display_backend == .X11 or options.linux_display_backend == .Both) {
-                    raylib.root_module.addCMacro("_GLFW_X11", "");
+                    if (options.platform == .glfw) {
+                        raylib.root_module.addCMacro("_GLFW_X11", "");
+                    }
+                    if (options.platform == .rgfw) {
+                        raylib.root_module.addCMacro("RGFW_X11", "");
+                        raylib.root_module.addCMacro("RGFW_UNIX", "");
+                    }
                     raylib.root_module.linkLibrary(libx11);
                 }
 
@@ -341,7 +380,13 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                         , .{});
                         @panic("`wayland-scanner` not found");
                     };
-                    raylib.root_module.addCMacro("_GLFW_WAYLAND", "");
+                    if (options.platform == .glfw) {
+                        raylib.root_module.addCMacro("_GLFW_WAYLAND", "");
+                    }
+                    if (options.platform == .rgfw) {
+                        raylib.root_module.addCMacro("RGFW_WAYLAND", "");
+                        raylib.root_module.addCMacro("EGLAPIENTRY", "");
+                    }
 
                     const libwayland_dep = b.dependency("wayland_zig", .{
                         .target = target,
