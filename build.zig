@@ -109,16 +109,23 @@ const config_h_flags = outer: {
     while (lines.next()) |line| {
         if (!std.mem.containsAtLeast(u8, line, 1, "SUPPORT")) continue;
         if (std.mem.containsAtLeast(u8, line, 1, "MODULE")) continue;
+        if (std.mem.containsAtLeast(u8, line, 1, "WARNING")) continue; // Gets rid of "-DING:=0"
         if (std.mem.startsWith(u8, line, "//")) continue;
         if (std.mem.startsWith(u8, line, "#if")) continue;
 
         var flag = std.mem.trimStart(u8, line, " \t"); // Trim whitespace
         flag = flag["#define ".len - 1 ..]; // Remove #define
+        if (!std.mem.containsAtLeast(u8, flag, 1, "SUPPORT")) continue; // Gets rid of "-DUPPORT_FILEFORMAT_BMP=0" and "-DUPPORT_FILEFORMAT_PNG=0"
         flag = std.mem.trimStart(u8, flag, " \t"); // Trim whitespace
-        flag = flag[0 .. std.mem.indexOf(u8, flag, " ") orelse continue]; // Flag is only one word, so capture till space
-        flag = "-D" ++ flag; // Prepend with -D
+        const first_space = std.mem.indexOfScalar(u8, flag, ' ') orelse continue;
+        const value =
+            if (std.mem.containsAtLeastScalar(u8, flag, 1, '1'))
+                "1"
+            else
+                "0";
+        flag = flag[0..first_space]; // Flag is only one word, so capture till space
 
-        flags[i] = flag;
+        flags[i] = "-D" ++ flag ++ "=" ++ value;
         i += 1;
     }
 
@@ -180,29 +187,40 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         //
         // Note: This means certain flags like `-x c++` won't be processed properly.
         // `-xc++` or similar should be used when possible
-        var config_iter = std.mem.tokenizeScalar(u8, options.config, ' ');
+        var user_config_iter = std.mem.tokenizeScalar(u8, options.config, ' ');
 
         // Apply config flags supplied by the user
-        while (config_iter.next()) |config_flag|
-            try raylib_flags_arr.append(b.allocator, config_flag);
+        while (user_config_iter.next()) |user_config_flag| {
+            try raylib_flags_arr.append(b.allocator, user_config_flag);
+        }
 
         // Apply all relevant configs from `src/config.h` *except* the user-specified ones
         //
         // Note: Currently using a suboptimal `O(m*n)` time algorithm where:
         // `m` corresponds roughly to the number of lines in `src/config.h`
         // `n` corresponds to the number of user-specified flags
-        outer: for (config_h_flags) |flag| {
+        outer: for (config_h_flags) |config_h_flag| {
             // If a user already specified the flag, skip it
-            config_iter.reset();
-            while (config_iter.next()) |config_flag| {
-                // For a user-specified flag to match, it must share the same prefix and have the
-                // same length or be followed by an equals sign
-                if (!std.mem.startsWith(u8, config_flag, flag)) continue;
-                if (config_flag.len == flag.len or config_flag[flag.len] == '=') continue :outer;
+            user_config_iter.reset();
+            while (user_config_iter.next()) |user_config_flag| {
+                // For a user-specified flag to match, it must share the same prefix and have the same length
+                const eql_pos = std.mem.indexOfScalar(u8, config_h_flag, '=') orelse continue;
+                if (!std.mem.startsWith(u8, user_config_flag, config_h_flag[0..eql_pos])) continue;
+                if (user_config_flag.len == config_h_flag.len) continue :outer;
             }
 
             // Otherwise, append default value from config.h to compile flags
-            try raylib_flags_arr.append(b.allocator, flag);
+            try raylib_flags_arr.append(b.allocator, config_h_flag);
+        }
+
+        for (raylib_flags_arr.items) |flag| {
+            if (!std.mem.startsWith(u8, flag, "-DSUPPORT_TRACELOG")) continue;
+            switch (flag["-DSUPPORT_TRACELOG".len + 1]) {
+                '0' => try raylib_flags_arr.append(b.allocator, "-DTRACELOG(level, ...)=(void)0"),
+                '1' => try raylib_flags_arr.append(b.allocator, "-DTRACELOG(level, ...)=TraceLog(level, __VA_ARGS__)"),
+                else => @panic("-DSUPPORT_TRACELOG needs to be either 0 or 1"),
+            }
+            break;
         }
     }
 
