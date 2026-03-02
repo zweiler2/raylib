@@ -212,16 +212,6 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             // Otherwise, append default value from config.h to compile flags
             try raylib_flags_arr.append(b.allocator, config_h_flag);
         }
-
-        for (raylib_flags_arr.items) |flag| {
-            if (!std.mem.startsWith(u8, flag, "-DSUPPORT_TRACELOG")) continue;
-            switch (flag["-DSUPPORT_TRACELOG".len + 1]) {
-                '0' => try raylib_flags_arr.append(b.allocator, "-DTRACELOG(level, ...)=(void)0"),
-                '1' => try raylib_flags_arr.append(b.allocator, "-DTRACELOG(level, ...)=TraceLog(level, __VA_ARGS__)"),
-                else => @panic("-DSUPPORT_TRACELOG needs to be either 0 or 1"),
-            }
-            break;
-        }
     }
 
     // No GLFW required on PLATFORM_DRM
