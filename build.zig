@@ -1,12 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const RAYLIB_VERSION: std.SemanticVersion = .{
-    .major = 6,
-    .minor = 0,
-    .patch = 0,
-};
-
 /// Minimum supported version of Zig
 const min_ver = "0.15.2";
 
@@ -146,7 +140,6 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             .target = target,
             .link_libc = true,
         }),
-        .version = RAYLIB_VERSION,
     });
 
     try raylib_flags_arr.appendSlice(
@@ -343,12 +336,23 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                 raylib.root_module.linkSystemLibrary("EGL", .{});
                 raylib.root_module.linkSystemLibrary("log", .{});
                 raylib.root_module.linkSystemLibrary("android", .{});
+                raylib.root_module.linkSystemLibrary("OpenSLES", .{});
 
                 setDesktopPlatform(raylib, .android);
 
                 try raylib_flags_arr.appendSlice(
                     b.allocator,
                     &[_][]const u8{
+                        "-Wl,--exclude-libs,libatomic.a",
+                        "-Wl,--build-id",
+                        "-Wl,-z,noexecstack",
+                        "-Wl,-z,relro",
+                        "-Wl,-z,now",
+                        "-Wl,--warn-shared-textrel",
+                        "-Wl,--fatal-warnings",
+                        "-Wl,-undefined,dynamic_lookup",
+                        "-Wl,--wrap=fopen", // https://codeberg.org/ziglang/zig/pulls/31245
+                        "-u ANativeActivity_onCreate",
                         "-ffunction-sections",
                         "-funwind-tables",
                         "-fstack-protector-strong",
@@ -361,6 +365,12 @@ fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
                         b.fmt("-D__ANDROID_API__={s}", .{options.android_api_version}),
                     },
                 );
+
+                const android_native_app_glue_file = b.pathJoin(&.{ androidGluePath, "/android_native_app_glue.c" });
+                raylib.root_module.addCSourceFile(.{
+                    .file = .{ .cwd_relative = android_native_app_glue_file },
+                    .flags = raylib_flags_arr.items,
+                });
             } else {
                 if (options.platform == .glfw) {
                     try c_source_files.append(b.allocator, "src/rglfw.c");
