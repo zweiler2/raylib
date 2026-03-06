@@ -295,7 +295,7 @@ FILE *funopen(const void *cookie, int (*readfn)(void *, char *, int), int (*writ
 extern int main(int argc, char *argv[]);
 
 // Android main function
-void android_main(struct android_app *app)
+RLAPI void android_main(struct android_app *app)
 {
     char arg0[] = "raylib";     // NOTE: argv[] are mutable
     platform.app = app;
